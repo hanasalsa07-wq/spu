@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video Animasi: Sifat Periodik Unsur &amp; Tabel Periodik</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#120d33;--card:#221a5c;--ink:#fff7ec;--mut:#c9c3e8;--line:#43388f;--ac:#ffd23f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Instrument Sans',system-ui,sans-serif;display:flex;justify-content:center;padding:20px 14px}
+main{width:100%;max-width:960px}
+h1{font-size:1.5rem;margin:0 0 12px}
+.stage{position:relative;border-radius:14px;overflow:hidden;border:2px solid var(--line)}
+canvas{display:block;width:100%;height:auto;aspect-ratio:16/9}
+#big{position:absolute;inset:0;margin:auto;width:92px;height:92px;border-radius:50%;border:0;background:var(--ac);color:#3a2a00;font-size:36px;cursor:pointer}
+#sub{margin-top:10px;min-height:3.4em;padding:10px 14px;background:var(--card);border-radius:10px;line-height:1.5}
+.ctl{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+button.b{font:inherit;font-weight:600;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer}
+button.b:hover{border-color:var(--ac)}
+button.on{background:var(--ac);color:#3a2a00;border-color:var(--ac)}
+select{font:inherit;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px;max-width:220px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+input[type=range]{flex:1;min-width:140px;accent-color:var(--ac)}
+#time{color:var(--mut);font-variant-numeric:tabular-nums;min-width:90px;text-align:right}
+label{color:var(--mut);display:flex;align-items:center;gap:6px;font-size:.95rem}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+</style>
+</head>
+<body>
+<main>
+<h1>Sifat Periodik Unsur &amp; Tabel Periodik</h1>
+<div class="stage">
+  <canvas id="cv"></canvas>
+  <button id="big" aria-label="Putar video">▶</button>
+</div>
+<div id="sub" aria-live="polite"></div>
+<div class="ctl">
+  <button class="b" id="play">Putar</button>
+  <button class="b" id="restart">Dari awal</button>
+  <input type="range" id="seek" min="0" value="0" step="1" aria-label="Posisi video">
+  <span id="time">0:00 / 0:00</span>
+</div>
+<div class="ctl">
+  <label><input type="checkbox" id="snd" checked> Suara narator</label>
+  <label>Suara <select id="voice"></select></label>
+  <label>Kecepatan <select id="rate"><option value="0.92">Pelan</option><option value="1.05" selected>Normal</option><option value="1.2">Cepat</option></select></label>
+</div>
+<div class="chips" id="chips"></div>
+</main>
+
+<script>
+const W=960,H=540,$=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d'),dpr=Math.min(window.devicePixelRatio||1,2);
+cv.width=W*dpr;cv.height=H*dpr;
+const C={ink:'#fff7ec',mut:'#c9c3e8',ac:'#ffd23f',dark:'#16123a'};
+const CC={alk:'#ff5a5f',ake:'#ff9f1c',trn:'#ffd23f',pot:'#2ec4b6',met:'#a3e635',non:'#38bdf8',hal:'#818cf8',ng:'#ff66d9',lan:'#ffb3c7',act:'#9f8cff'};
+const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const prog=(t,a,b)=>clamp((t-a)/(b-a));
+const eo=x=>1-Math.pow(1-x,3);
+const hs=(h,l)=>'hsl('+h+',88%,'+(l||60)+'%)';
+
+// ---------- data unsur ----------
+const SYM='H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og'.split(' ');
+const S=a=>new Set(a);
+const AL=S([3,11,19,37,55,87]),AE=S([4,12,20,38,56,88]),MD=S([5,14,32,33,51,52]),NM=S([1,6,7,8,15,16,34]),HL=S([9,17,35,53,85,117]),NG=S([2,10,18,36,54,86,118]),PT=S([13,31,49,50,81,82,83,84,113,114,115,116]);
+function colz(z){if(AL.has(z))return CC.alk;if(AE.has(z))return CC.ake;if(MD.has(z))return CC.met;if(NM.has(z))return CC.non;if(HL.has(z))return CC.hal;if(NG.has(z))return CC.ng;if(PT.has(z))return CC.pot;if(z>=57&&z<=71)return CC.lan;if(z>=89&&z<=103)return CC.act;return CC.trn}
+function pos(z){
+  if(z==1)return[0,0];if(z==2)return[17,0];
+  if(z<=4)return[z-3,1];if(z<=10)return[z+7,1];
+  if(z<=12)return[z-11,2];if(z<=18)return[z-1,2];
+  if(z<=36)return[z-19,3];if(z<=54)return[z-37,4];
+  if(z<=56)return[z-55,5];if(z<=71)return[z-55,7.4];
+  if(z<=86)return[z-69,5];
+  if(z<=88)return[z-87,6];if(z<=103)return[z-87,8.4];
+  return[z-101,6]}
+
+// ---------- alat gambar ----------
+function circ(x,y,r,fill,stroke,lw){ctx.beginPath();ctx.arc(x,y,Math.max(0,r),0,7);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||1;ctx.stroke()}}
+function rr(x,y,w,h,r,fill,stroke,lw){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||1;ctx.stroke()}}
+function txt(s,x,y,size,col,al,w){ctx.font=(w||500)+' '+size+'px "Instrument Sans",system-ui,sans-serif';ctx.fillStyle=col||C.ink;ctx.textAlign=al||'center';ctx.textBaseline='middle';ctx.fillText(s,x,y)}
+function title(s){txt(s,480,48,34,C.ink,'center',700)}
+function lines(arr,x,y,size,col,gap,al){arr.forEach((s,i)=>txt(s,x,y+i*gap,size,col,al||'center',500))}
+function table(y0,ch,aFn){for(let z=1;z<=118;z++){const a=aFn(z);if(a<=0)continue;const p=pos(z),x=48+p[0]*48+1.5,y=y0+p[1]*ch+1.5;
+  ctx.globalAlpha=a;rr(x,y,45,ch-3,6,colz(z));txt(z,x+5,y+9,9,C.dark,'left',600);txt(SYM[z-1],x+22.5,y+ch*.62,15,C.dark,'center',700)}ctx.globalAlpha=1}
+
+// ---------- adegan ----------
+const SCENES=[
+{d:7,l:'Judul',n:'Halo teman-teman! Siap berpetualang bersama tabel periodik? Yuk, kita mulai!',f:lt=>{
+  table(30,34,z=>eo(prog(lt,z*.03,z*.03+.5)));
+  const a=prog(lt,2,3);ctx.globalAlpha=a;txt('Sifat Periodik Unsur',480,410,56,C.ink,'center',700);txt('Tabel Periodik · Kimia SMA Kelas X',480,468,24,C.ac);ctx.globalAlpha=1}},
+
+{d:14,l:'Sejarah',n:'Dulu, Mendeleev menyusun unsur berdasarkan kenaikan massa atom. Lalu Moseley menyempurnakannya dengan nomor atom. Itulah dasar tabel periodik modern, yang kita pakai sekarang!',f:lt=>{
+  title('Sejarah tabel periodik');
+  const K=[[45,'1869','Mendeleev',['Disusun berdasarkan','kenaikan massa atom'],'#ff9f1c',.6],[345,'1913','Moseley',['Disusun berdasarkan','kenaikan nomor atom'],'#2ec4b6',4.6],[645,'Kini','Tabel Modern',['Urut nomor atom,','ada periode & golongan'],'#ff6fb5',8.6]];
+  K.forEach((k,i)=>{const a=eo(prog(lt,k[5],k[5]+.7)),y=130+(1-a)*40;ctx.globalAlpha=a;rr(k[0],y,270,260,22,k[4]);
+    txt(k[1],k[0]+135,y+65,60,C.dark,'center',700);txt(k[2],k[0]+135,y+128,28,C.dark,'center',700);lines(k[3],k[0]+135,y+180,20,C.dark,28);
+    if(i>0){ctx.globalAlpha=a;txt('→',k[0]-15,y+130,34,C.ac,'center',700)}});
+  ctx.globalAlpha=1}},
+
+{d:20,l:'Tabel modern',n:'Tabel periodik modern disusun berdasarkan kenaikan nomor atom. Baris mendatar disebut periode, jumlahnya tujuh. Lajur tegak disebut golongan, jumlahnya delapan belas. Unsur dalam satu golongan punya sifat yang mirip, keren, kan?',f:lt=>{
+  title('Tabel periodik modern');const y0=85,ch=36;
+  table(y0,ch,z=>eo(prog(lt,z*.045,z*.045+.5)));
+  if(lt>=6&&lt<12){const r=Math.min(6,Math.floor((lt-6)/.85));rr(48,y0+r*ch,864,ch-1,6,'rgba(255,255,255,.3)','#fff',3)}
+  if(lt>=6){for(let r=0;r<7;r++)txt(r+1,24,y0+r*ch+ch/2,16,C.ac,'center',700);
+    txt('Periode = baris mendatar (7 periode)',480,468,26,CC.ake,'center',700)}
+  if(lt>=13){const c=Math.min(17,Math.floor((lt-13)/.3));if(lt<18.5)rr(48+c*48,y0,46,ch*7-2,6,'rgba(255,255,255,.28)','#fff',3);
+    for(let k=0;k<18;k++)txt(k+1,48+k*48+23,y0-12,14,C.ac,'center',700);
+    ctx.fillStyle='#120d33';ctx.fillRect(100,448,760,40);txt('Golongan = lajur tegak (18 golongan)',480,468,26,CC.non,'center',700)}
+  ctx.globalAlpha=1}},
+
+{d:16,l:'Golongan utama',n:'Kenalan dengan empat golongan utama! Golongan satu A, alkali, sangat reaktif. Golongan dua A, alkali tanah. Golongan tujuh A, halogen, pembentuk garam. Dan golongan delapan A, gas mulia, yang paling stabil!',f:lt=>{
+  title('Golongan utama');
+  const G=[['IA','Alkali',['Li','Na','K'],['Sangat reaktif','Lunak dan ringan','1 elektron valensi'],CC.alk],['IIA','Alkali tanah',['Be','Mg','Ca'],['Reaktif','Lebih keras dari IA','2 elektron valensi'],CC.ake],['VIIA','Halogen',['F','Cl','Br'],['Pembentuk garam','Sangat elektronegatif','7 elektron valensi'],CC.hal],['VIIIA','Gas mulia',['He','Ne','Ar'],['Sangat stabil','Hampir tak bereaksi','Kulit terluar penuh'],CC.ng]];
+  G.forEach((g,i)=>{const t0=.6+i*4,a=eo(prog(lt,t0,t0+.7)),x=24+i*223,y=110+(1-a)*40;ctx.globalAlpha=a;
+    rr(x,y,205,350,22,g[4]);txt(g[0],x+102,y+48,50,C.dark,'center',700);txt(g[1],x+102,y+100,26,C.dark,'center',700);
+    g[2].forEach((s,k)=>{circ(x+47+k*55,y+170,23,'#fff7ec');txt(s,x+47+k*55,y+170,20,C.dark,'center',700)});
+    lines(g[3],x+102,y+245,18,C.dark,34)});
+  ctx.globalAlpha=1}},
+
+{d:16,l:'Jari-jari atom',n:'Sifat periodik pertama: jari-jari atom. Dalam satu periode, dari kiri ke kanan, jari-jari makin kecil, karena muatan inti makin kuat menarik elektron. Dalam satu golongan, dari atas ke bawah, jari-jari makin besar, karena kulit atomnya bertambah!',f:lt=>{
+  if(lt<8){title('Jari-jari atom: periode 3');
+    const D=[['Na',186],['Mg',160],['Al',143],['Si',118],['P',110],['S',103],['Cl',99],['Ar',98]];
+    D.forEach((d,i)=>{const s=eo(prog(lt,.4+i*.4,1+i*.4)),x=130+i*100;circ(x,240,d[1]*.23*s,hs(i*40+10),'#fff',2);txt(d[0],x,330,26,C.ink,'center',700);ctx.globalAlpha=s;txt(d[1]+' pm',x,365,18,C.mut);ctx.globalAlpha=1});
+    ctx.globalAlpha=prog(lt,4.5,5.3);txt('Dari kiri ke kanan: jari-jari makin kecil  →',480,440,30,C.ac,'center',700);ctx.globalAlpha=1}
+  else{const l=lt-8;title('Jari-jari atom: golongan IA');
+    const D=[['Li',152],['Na',186],['K',227],['Rb',248],['Cs',265]];
+    D.forEach((d,i)=>{const s=eo(prog(l,.4+i*.6,1.2+i*.6)),x=160+i*160;circ(x,230,d[1]*.23*s,hs(i*60+330),'#fff',2);txt(d[0],x,330,28,C.ink,'center',700);ctx.globalAlpha=s;txt(d[1]+' pm',x,368,18,C.mut);ctx.globalAlpha=1});
+    ctx.globalAlpha=prog(l,4.5,5.3);txt('Dari atas ke bawah: jari-jari makin besar  ↓',480,440,30,C.ac,'center',700);ctx.globalAlpha=1}}},
+
+{d:13,l:'Energi ionisasi',n:'Sifat kedua: energi ionisasi, yaitu energi untuk melepas elektron terluar. Dalam satu periode, energi ionisasi cenderung naik ke kanan. Dalam satu golongan, makin ke bawah makin kecil, karena elektron makin mudah lepas.',f:lt=>{
+  title('Energi ionisasi pertama, periode 2 (kJ/mol)');
+  const D=[['Li',520],['Be',900],['B',801],['C',1086],['N',1402],['O',1314],['F',1681],['Ne',2081]];
+  D.forEach((d,i)=>{const s=eo(prog(lt,.5+i*.45,1.3+i*.45)),h=d[1]*.125*s,x=100+i*100;rr(x-30,400-h,60,h,8,hs(i*40));
+    if(s>.95)txt(d[1],x,400-h-14,18,C.ink,'center',700);txt(d[0],x,428,26,C.ink,'center',700)});
+  if(lt>9)txt('Dalam golongan: makin ke bawah makin kecil  ↓',480,478,28,CC.non,'center',700);
+  else if(lt>5.5)txt('Dalam periode: cenderung naik ke kanan  →',480,478,28,C.ac,'center',700)}},
+
+{d:13,l:'Keelektronegatifan',n:'Sifat ketiga: keelektronegatifan, yaitu kemampuan menarik elektron. Dari kiri ke kanan makin besar, dan fluorin adalah juaranya, nilainya paling tinggi!',f:lt=>{
+  title('Keelektronegatifan, periode 2');
+  const D=[['Li',.98],['Be',1.57],['B',2.04],['C',2.55],['N',3.04],['O',3.44],['F',3.98]];
+  D.forEach((d,i)=>{const s=eo(prog(lt,.5+i*.5,1.3+i*.5)),h=d[1]*65*s,x=130+i*115;rr(x-35,400-h,70,h,8,hs(i*48+330));
+    if(s>.95)txt(d[1].toFixed(2),x,400-h-14,18,C.ink,'center',700);txt(d[0],x,428,26,C.ink,'center',700)});
+  if(lt>7.5){const p=1+.06*Math.sin(lt*6);txt('★ Tertinggi!',130+6*115,100,28*p,C.ac,'center',700)}
+  if(lt>5)txt('Dari kiri ke kanan makin besar  →',480,478,28,C.ac,'center',700)}},
+
+{d:14,l:'Ringkasan tren',n:'Yuk rangkum! Ke arah kanan, jari-jari mengecil, energi ionisasi dan keelektronegatifan naik. Ke arah bawah, jari-jari membesar, energi ionisasi dan keelektronegatifan turun. Mudah, kan?',f:lt=>{
+  title('Tren sifat periodik');
+  ctx.globalAlpha=eo(prog(lt,0,1.2));
+  for(let r=0;r<7;r++)for(let c=0;c<18;c++){const v=c/17*.6+(6-r)/6*.4;rr(30+c*21,150+r*23,19,21,4,'hsl('+(250-v*230)+',88%,58%)')}
+  txt('→  ke kanan (dalam periode)',210,335,22,C.ac,'center',700);txt('↓  ke bawah (dalam golongan)',210,370,22,CC.non,'center',700);ctx.globalAlpha=1;
+  ctx.globalAlpha=prog(lt,1,1.8);txt('ke kanan',760,120,18,C.mut,'center',700);txt('ke bawah',880,120,18,C.mut,'center',700);ctx.globalAlpha=1;
+  const R=[['Jari-jari atom','▼ Mengecil','▲ Membesar','#ff7b54',2],['Energi ionisasi','▲ Naik','▼ Turun','#ffd23f',5],['Keelektronegatifan','▲ Naik','▼ Turun','#2ec4b6',8]];
+  R.forEach((r,i)=>{const y=190+i*80,a=eo(prog(lt,r[4],r[4]+.7));ctx.globalAlpha=a;rr(425,y-30,520,60,14,r[3]);
+    txt(r[0],442,y,22,C.dark,'left',700);txt(r[1],760,y,20,C.dark,'center',700);txt(r[2],880,y,20,C.dark,'center',700)});
+  ctx.globalAlpha=1}},
+
+{d:9,l:'Penutup',n:'Hebat! Kamu sudah memahami sifat periodik unsur. Terus semangat belajar kimia, sampai jumpa!',f:lt=>{
+  for(let i=0;i<70;i++){const sp=50+(i%7)*22,y=((lt*sp+i*61)%600)-30,x=(i*137.5)%960;
+    ctx.save();ctx.translate(x,y);ctx.rotate(lt*(1+i%3)+i);ctx.fillStyle=hs((i*47)%360,60);ctx.fillRect(-6,-3,12,6);ctx.restore()}
+  const a=eo(prog(lt,0,.8)),g=ctx.createLinearGradient(260,0,700,0);
+  g.addColorStop(0,'#ff5a5f');g.addColorStop(.35,'#ffd23f');g.addColorStop(.7,'#2ec4b6');g.addColorStop(1,'#c084fc');
+  ctx.globalAlpha=a;ctx.fillStyle=g;ctx.font='700 90px "Instrument Sans",system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('Hebat!',480,120);
+  const L=['Periode = baris, golongan = kolom','Ke kanan: jari-jari mengecil, energi ionisasi & keelektronegatifan naik','Ke bawah: jari-jari membesar, energi ionisasi & keelektronegatifan turun'];
+  L.forEach((s,i)=>{ctx.globalAlpha=prog(lt,1.5+i*1.5,2.1+i*1.5);txt(s,480,240+i*70,i?22:30,C.ink,'center',700)});
+  ctx.globalAlpha=1}}
+];
+const STARTS=[];let TOTAL=0;SCENES.forEach(s=>{STARTS.push(TOTAL);TOTAL+=s.d});
+
+// ---------- suara narator ----------
+let voices=[],speaking=false,tok=0;
+const TTS='speechSynthesis' in window;
+function loadVoices(){if(!TTS)return;voices=speechSynthesis.getVoices().filter(v=>/^id/i.test(v.lang));
+  const s=$('voice');s.innerHTML='';
+  if(!voices.length){const o=document.createElement('option');o.textContent='Suara bawaan perangkat';s.appendChild(o);return}
+  voices.forEach((v,i)=>{const o=document.createElement('option');o.value=i;o.textContent=v.name;s.appendChild(o)})}
+if(TTS){loadVoices();speechSynthesis.onvoiceschanged=loadVoices}
+function stopSay(){tok++;speaking=false;if(TTS)speechSynthesis.cancel()}
+function say(i){stopSay();if(!TTS||!$('snd').checked||!playing)return;
+  const my=tok,u=new SpeechSynthesisUtterance(SCENES[i].n);
+  u.lang='id-ID';u.rate=+$('rate').value;u.pitch=1.2;u.volume=1;
+  if(voices.length)u.voice=voices[+$('voice').value||0];
+  u.onend=u.onerror=()=>{if(my===tok)speaking=false};
+  speaking=true;speechSynthesis.speak(u);
+  setTimeout(()=>{if(my===tok)speaking=false},40000)}
+
+// ---------- pemutar ----------
+let t=0,playing=false,last=0,cur=-1;
+const seek=$('seek');seek.max=Math.round(TOTAL*10);
+const fmt=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+SCENES.forEach((s,i)=>{const b=document.createElement('button');b.className='b';b.textContent=(i+1)+'. '+s.l;b.onclick=()=>{t=STARTS[i];cur=-1;if(!playing)setPlay(true)};$('chips').appendChild(b)});
+
+function setPlay(v){playing=v;if(v&&t>=TOTAL-.05){t=0;cur=-1}
+  $('play').textContent=v?'Jeda':'Putar';$('big').style.display=v?'none':'block';$('big').textContent=t>=TOTAL-.05?'↻':'▶';
+  if(v)say(Math.max(cur,0));else stopSay()}
+
+function render(){
+  let i=SCENES.length-1;while(i>0&&t<STARTS[i])i--;
+  if(i!==cur){cur=i;$('sub').textContent=SCENES[i].n;say(i);
+    [...$('chips').children].forEach((b,k)=>b.classList.toggle('on',k===i))}
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.globalAlpha=1;
+  const bg=ctx.createLinearGradient(0,0,W,H);bg.addColorStop(0,'#2a1370');bg.addColorStop(.55,'#14305f');bg.addColorStop(1,'#0b5560');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  SCENES[i].f(t-STARTS[i]);ctx.globalAlpha=1;
+  seek.value=Math.round(t*10);$('time').textContent=fmt(t)+' / '+fmt(TOTAL)}
+
+function frame(ts){
+  if(playing){
+    let nt=t+Math.min(.1,(ts-last)/1000);
+    if(cur>=0){const end=STARTS[cur]+SCENES[cur].d;if(speaking&&nt>=end)nt=end-.001} // tunggu narator selesai bicara
+    t=nt;if(t>=TOTAL){t=TOTAL-.001;setPlay(false);$('big').textContent='↻'}}
+  last=ts;render();requestAnimationFrame(frame)}
+
+$('play').onclick=$('big').onclick=()=>setPlay(!playing);
+$('restart').onclick=()=>{t=0;cur=-1;setPlay(true)};
+seek.oninput=()=>{t=seek.value/10;cur=-1};
+$('snd').onchange=()=>{if($('snd').checked)say(Math.max(cur,0));else stopSay()};
+$('voice').onchange=$('rate').onchange=()=>{if(playing)say(Math.max(cur,0))};
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&!['INPUT','BUTTON','SELECT'].includes(e.target.tagName)){e.preventDefault();setPlay(!playing)}});
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
